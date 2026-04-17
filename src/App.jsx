@@ -194,14 +194,33 @@ function Admin({ token }) {
       )}
     </div>
 
-    {view==="businesses"&&<div>
+   {view==="businesses"&&<div>
       <h2 style={S.sh}>Kaikki asiakkaat</h2>
-      {bizs.map(b=><div key={b.id} style={S.card}><div>
-        <div style={S.ct}>{b.name}</div>
-        <div style={S.cm}>{b.address||"Ei osoitetta"} · {b.phone||"Ei puhelinta"} · {b.email||"Ei sähköpostia"}</div>
-        <div style={{fontSize:11,color:"#555",marginTop:4}}>ID: {b.id}</div>
-        <div style={{fontSize:11,color:"#555"}}>Luotu: {new Date(b.created_at).toLocaleString("fi-FI")}</div>
-      </div></div>)}
+      {bizs.map(function(b){
+        var usage = logs.filter(function(l){return l.business_id===b.id && new Date(l.created_at).getTime() > Date.now()-30*24*60*60*1000;}).length;
+        var lim = b.message_limit || 500;
+        var pct = Math.min(usage/lim*100, 100);
+        return <div key={b.id} style={S.card}><div style={{flex:1}}>
+          <div style={S.ct}>{b.name}</div>
+          <div style={S.cm}>{b.address||"Ei osoitetta"} · {b.phone||"Ei puhelinta"} · {b.email||"Ei sähköpostia"}</div>
+          <div style={{fontSize:11,color:"#555",marginTop:4}}>ID: {b.id}</div>
+          <div style={{fontSize:11,color:"#555"}}>Luotu: {new Date(b.created_at).toLocaleString("fi-FI")}</div>
+          <div style={{marginTop:10,padding:10,background:"#0a0a14",borderRadius:8}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:6,fontSize:12}}>
+              <span style={{color:"#888"}}>Käyttö 30pv:</span>
+              <span style={{color:pct>=90?"#ff6b6b":pct>=70?"#eab308":"#4ade80",fontWeight:600}}>{usage} / {lim}</span>
+            </div>
+            <div style={{height:6,background:"#1e1e30",borderRadius:3,overflow:"hidden"}}>
+              <div style={{width:pct+"%",height:"100%",background:pct>=90?"#ff6b6b":pct>=70?"#eab308":"#4ade80",transition:"width 0.3s"}}></div>
+            </div>
+            <div style={{display:"flex",gap:8,marginTop:10,alignItems:"center"}}>
+              <span style={{fontSize:11,color:"#888"}}>Raja:</span>
+              <input type="number" defaultValue={lim} onBlur={async function(e){var v=parseInt(e.target.value);if(v&&v!==lim){var h={"Content-Type":"application/json","apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY,"Prefer":"return=representation"};await fetch(SB_URL+"/rest/v1/businesses?id=eq."+b.id,{method:"PATCH",headers:h,body:JSON.stringify({message_limit:v})});window.location.reload();}}} style={{padding:"4px 8px",borderRadius:6,border:"1px solid #2a2a3a",background:"#0a0a14",color:"#fff",fontSize:12,width:80,outline:"none"}}/>
+              <span style={{fontSize:11,color:"#555"}}>viestiä/kk</span>
+            </div>
+          </div>
+        </div></div>;
+      })}
     </div>}
 
     {view==="leads"&&<div>

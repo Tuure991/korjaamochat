@@ -20,8 +20,16 @@ export default async function handler(req, res) {
     ]);
     const [biz, svcs, faqs] = await Promise.all([bizRes.json(), svcRes.json(), faqRes.json()]);
 
-    if (!biz || biz.length === 0) return res.status(404).json({ error: "Business not found" });
+   if (!biz || biz.length === 0) return res.status(404).json({ error: "Business not found" });
     const b = biz[0];
+
+    var monthAgo = new Date(Date.now() - 30*24*60*60*1000).toISOString();
+    var countRes = await fetch(SB_URL + "/rest/v1/chat_logs?business_id=eq." + businessId + "&created_at=gte." + monthAgo + "&select=id", { headers: {...headers, "Prefer": "count=exact"} });
+    var usedCount = parseInt(countRes.headers.get("content-range")?.split("/")[1] || "0");
+    var limit = b.message_limit || 500;
+    if (usedCount >= limit) {
+      return res.status(200).json({ reply: "Palvelun kuukausiraja on täyttynyt. Ota yhteyttä korjaamoon suoraan: " + (b.phone || b.email || "") });
+    }
 
     let info = "KORJAAMON TIEDOT:\nNimi: " + b.name + "\n";
     if (b.address) info += "Osoite: " + b.address + "\n";
