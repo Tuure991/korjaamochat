@@ -43,7 +43,12 @@ function Faq({ bizId, token }) {
   const add = async () => { if(!f.question||!f.answer)return; await sb.add("faqs",{business_id:bizId,...f},token); setF({question:"",answer:""}); load(); };
   return (<div style={S.sec}><h2 style={S.sh}>Usein kysytyt</h2><p style={S.sp}>Chatbot osaa vastata näihin.</p>{ld?<p style={{color:"#666"}}>Ladataan...</p>:<>{ls.map(q=><div key={q.id} style={S.card}><div style={{flex:1}}><div style={S.ct}>{q.question}</div><div style={S.cm}>{q.answer}</div></div><button style={S.dl} onClick={()=>{sb.del("faqs",q.id,token);load();}}>✕</button></div>)}<div style={S.abox}><input style={S.is} value={f.question} onChange={e=>setF({...f,question:e.target.value})} placeholder="Kysymys"/><input style={S.is} value={f.answer} onChange={e=>setF({...f,answer:e.target.value})} placeholder="Vastaus"/><button style={S.abtn} onClick={add}>+ Lisää</button></div></>}</div>);
 }
-
+function Leads({ bizId, token }) {
+  const [ls, setLs] = useState([]); const [ld, setLd] = useState(true);
+  const load = async () => { const d = await sb.get("leads",token,"business_id=eq."+bizId+"&order=created_at.desc"); if(Array.isArray(d))setLs(d); setLd(false); };
+  useEffect(()=>{load(); const i=setInterval(load,30000); return ()=>clearInterval(i);},[bizId]);
+  return (<div style={S.sec}><h2 style={S.sh}>Liidit</h2><p style={S.sp}>Soittopyynnöt chatbotista. Päivittyy automaattisesti.</p>{ld?<p style={{color:"#666"}}>Ladataan...</p>:ls.length===0?<div style={{textAlign:"center",padding:"40px 20px",color:"#666"}}><div style={{fontSize:32,marginBottom:8}}>📞</div><div>Ei vielä liidejä.</div></div>:ls.map(l=><div key={l.id} style={{...S.card,borderLeft:l.created_at&&(Date.now()-new Date(l.created_at).getTime()<3600000)?"3px solid #4ade80":"3px solid transparent"}}><div><div style={S.ct}>{l.name} — <a href={"tel:"+l.phone} style={{color:"#e8532e",textDecoration:"none"}}>{l.phone}</a></div>{l.message&&<div style={S.cm}>{l.message}</div>}<div style={{fontSize:11,color:"#555",marginTop:4}}>{new Date(l.created_at).toLocaleString("fi-FI")}</div></div></div>)}</div>);
+}
 function Wdg({ bizId }) {
   const [cp, setCp] = useState(false);
   const code = '<script>window.KORJAAMOCHAT_ID="'+bizId+'";</script>\n<script src="https://korjaamochat.vercel.app/widget.js"></script>';
@@ -63,7 +68,7 @@ export default function App() {
   const login = d => { setSess(d); loadBiz(d.access_token, d.user.id); };
   if (!sess) return <Auth onLogin={login}/>;
   if (ld||!biz) return <div style={S.aw}><p style={{color:"#999"}}>Ladataan...</p></div>;
-  const tabs = [{id:"info",label:"Tiedot",icon:"🏪"},{id:"services",label:"Palvelut",icon:"🔧"},{id:"faq",label:"FAQ",icon:"❓"},{id:"widget",label:"Asennus",icon:"📋"},{id:"logs",label:"Keskustelut",icon:"💬"}];
+const tabs = [{id:"info",label:"Tiedot",icon:"🏪"},{id:"services",label:"Palvelut",icon:"🔧"},{id:"faq",label:"FAQ",icon:"❓"},{id:"leads",label:"Liidit",icon:"📞"},{id:"widget",label:"Asennus",icon:"📋"},{id:"logs",label:"Keskustelut",icon:"💬"}];
   return (<div style={{display:"flex",minHeight:"100vh",background:"#0a0a14",fontFamily:"'DM Sans',Arial,sans-serif",color:"#fff"}}><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     <div style={{width:240,background:"#12121e",borderRight:"1px solid #1e1e30",padding:"20px 16px",display:"flex",flexDirection:"column",position:"fixed",top:0,left:0,bottom:0,zIndex:50}}>
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:24}}><span style={{fontSize:24}}>🔧</span><div><div style={{color:"#fff",fontWeight:700,fontSize:16}}>Korjaamochat</div><div style={{color:"#666",fontSize:11}}>Hallintapaneeli</div></div></div>
@@ -77,7 +82,7 @@ export default function App() {
         {tab==="info"&&<BizForm biz={biz} token={sess.access_token} onSave={()=>loadBiz(sess.access_token,sess.user.id)}/>}
         {tab==="services"&&<Svc bizId={biz.id} token={sess.access_token}/>}
         {tab==="faq"&&<Faq bizId={biz.id} token={sess.access_token}/>}
-        {tab==="widget"&&<Wdg bizId={biz.id}/>}
+        {tab==="leads"&&<Leads bizId={biz.id} token={sess.access_token}/>}
         {tab==="logs"&&<Logs bizId={biz.id} token={sess.access_token}/>}
       </div>
     </div>
