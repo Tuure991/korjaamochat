@@ -43,7 +43,7 @@ export default async function handler(req, res) {
       faqs.forEach(function(f) { info += "K: " + f.question + "\nV: " + f.answer + "\n"; });
     }
 
-    var systemPrompt = "Olet " + b.name + " -korjaamon asiakaspalveluchatbot. Vastaa ystavallisesti ja lyhyesti (1-3 lausetta). Kayta VAIN alla olevia tietoja. Ala keksi mitaan. Jos et tieda, ohjaa soittamaan " + (b.phone || "korjaamolle") + ".\n\n" + info;
+    var systemPrompt = "Olet " + b.name + " -korjaamon asiakaspalveluchatbot. Vastaa ystavallisesti ja lyhyesti (1-3 lausetta). Kayta VAIN alla olevia tietoja. Ala keksi mitaan. Jos et tieda, ohjaa soittamaan " + (b.phone || "korjaamolle") + ". Kun asiakas haluaa varata ajan, huollon tai minka tahansa palvelun, kerro etta han voi jattaa soittopyynnon painamalla alla olevaa 'Jata soittopyynto' -nappia niin korjaamo ottaa yhteytta mahdollisimman pian. Ala koskaan yrita varata aikaa itse.\n\n" + info;
 
     var aiMessages = [];
     if (history && Array.isArray(history)) {
