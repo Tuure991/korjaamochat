@@ -24,11 +24,14 @@ export default async function handler(req, res) {
     const b = biz[0];
 console.log("BIZ DEBUG: "+JSON.stringify(b));
     var monthAgo = new Date(Date.now() - 30*24*60*60*1000).toISOString();
-    var serviceKey = process.env.SUPABASE_SERVICE_KEY || SB_KEY;
-    var countRes = await fetch(SB_URL + "/rest/v1/chat_logs?business_id=eq." + businessId + "&created_at=gte." + monthAgo + "&select=id", { headers: {"apikey": serviceKey, "Authorization": "Bearer " + serviceKey, "Range": "0-0", "Prefer": "count=exact"} });
-    var cr = countRes.headers.get("content-range") || "";
-    var usedCount = parseInt(cr.split("/")[1] || "0");
-    console.log("COUNT HEADER: "+cr);
+    var countRes = await fetch(SB_URL + "/rest/v1/rpc/get_usage", {
+      method: "POST",
+      headers: { ...headers },
+      body: JSON.stringify({ bid: businessId })
+    });
+    var usedCount = await countRes.json();
+    if (typeof usedCount !== "number") usedCount = 0;
+    console.log("COUNT: "+usedCount);
   var limit = b.message_limit || 500;
     console.log("USAGE DEBUG: used="+usedCount+" limit="+limit+" businessId="+businessId);
     if (usedCount >= limit) {
