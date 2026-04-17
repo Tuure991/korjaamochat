@@ -215,7 +215,7 @@ function Admin({ token }) {
             </div>
             <div style={{display:"flex",gap:8,marginTop:10,alignItems:"center"}}>
               <span style={{fontSize:11,color:"#888"}}>Raja:</span>
-              <input type="number" defaultValue={lim} onBlur={async function(e){var v=parseInt(e.target.value);if(v&&v!==lim){await fetch("https://korjaamochat.vercel.app/api/admin",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"update_business",businessId:b.id,data:{message_limit:v},userToken:token})});window.location.reload();}}} style={{padding:"4px 8px",borderRadius:6,border:"1px solid #2a2a3a",background:"#0a0a14",color:"#fff",fontSize:12,width:80,outline:"none"}}/>
+              <input type="number" defaultValue={lim} onBlur={async function(e){var v=parseInt(e.target.value);if(v&&v!==lim){var r=await fetch("https://korjaamochat.vercel.app/api/admin",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"update_business",businessId:b.id,data:{message_limit:v},userToken:token})});var rd=await r.json();if(rd.ok){e.target.style.borderColor="#4ade80";setTimeout(function(){e.target.style.borderColor="#2a2a3a";},1500);}else{alert("Virhe: "+(rd.error||"Tuntematon"));}}}} style={{padding:"4px 8px",borderRadius:6,border:"1px solid #2a2a3a",background:"#0a0a14",color:"#fff",fontSize:12,width:80,outline:"none"}}/>
               <span style={{fontSize:11,color:"#555"}}>viestiä/kk</span>
             </div>
           </div>
