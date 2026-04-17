@@ -52,6 +52,40 @@ function Leads({ bizId, token }) {
   useEffect(()=>{load(); const i=setInterval(load,30000); return ()=>clearInterval(i);},[bizId]);
   return (<div style={S.sec}><h2 style={S.sh}>Liidit</h2><p style={S.sp}>Soittopyynnöt chatbotista. Päivittyy automaattisesti.</p>{ld?<p style={{color:"#666"}}>Ladataan...</p>:ls.length===0?<div style={{textAlign:"center",padding:"40px 20px",color:"#666"}}><div style={{fontSize:32,marginBottom:8}}>📞</div><div>Ei vielä liidejä.</div></div>:ls.map(l=><div key={l.id} style={{...S.card,borderLeft:l.created_at&&(Date.now()-new Date(l.created_at).getTime()<3600000)?"3px solid #4ade80":"3px solid transparent"}}><div><div style={S.ct}>{l.name} — <a href={"tel:"+l.phone} style={{color:"#e8532e",textDecoration:"none"}}>{l.phone}</a></div>{l.message&&<div style={S.cm}>{l.message}</div>}<div style={{fontSize:11,color:"#555",marginTop:4}}>{new Date(l.created_at).toLocaleString("fi-FI")}</div></div></div>)}</div>);
 }
+function TestChat({ bizId }) {
+  const [msgs, setMsgs] = useState([{role:"assistant",text:"Hei! Kokeile chatbottiasi täällä."}]);
+  const [inp, setInp] = useState("");
+  const [busy, setBusy] = useState(false);
+  const send = async () => {
+    if(!inp.trim()||busy)return;
+    var t=inp.trim();
+    var nm=[...msgs,{role:"user",text:t}];
+    setMsgs(nm);setInp("");setBusy(true);
+    try{
+      var hist=nm.filter(function(m,i){return i>0;}).map(function(m){return{role:m.role==="user"?"user":"assistant",content:m.text};});
+      var r=await fetch("https://korjaamochat.vercel.app/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:t,businessId:bizId,history:hist.slice(-10)})});
+      var d=await r.json();
+      setMsgs(function(p){return[...p,{role:"assistant",text:d.reply||"Virhe"}];});
+    }catch(e){setMsgs(function(p){return[...p,{role:"assistant",text:"Yhteysvirhe"}];});}
+    setBusy(false);
+  };
+  return (<div style={S.sec}><h2 style={S.sh}>Testaa chatbottiasi</h2><p style={S.sp}>Kokeile miltä chatbottisi näyttää ja miten se vastaa asiakkaidesi kysymyksiin.</p>
+    <div style={{background:"#12121e",borderRadius:16,border:"1px solid #1e1e30",overflow:"hidden",maxWidth:400}}>
+      <div style={{background:"linear-gradient(135deg,#1a1a2e,#16213e)",padding:"12px 16px",display:"flex",alignItems:"center",gap:10}}>
+        <div style={{fontSize:20}}>🔧</div><div style={{color:"#fff",fontWeight:600,fontSize:14}}>Chatbot-esikatselu</div>
+      </div>
+      <div style={{padding:14,minHeight:300,maxHeight:400,overflowY:"auto",display:"flex",flexDirection:"column",gap:8}}>
+        {msgs.map(function(m,i){return <div key={i} style={{alignSelf:m.role==="user"?"flex-end":"flex-start",maxWidth:"82%",padding:"10px 14px",borderRadius:14,fontSize:13,lineHeight:1.5,background:m.role==="user"?"linear-gradient(135deg,#e8532e,#d4421a)":"#1e1e32",color:m.role==="user"?"#fff":"#e0e0e0",borderBottomRightRadius:m.role==="user"?4:14,borderBottomLeftRadius:m.role==="user"?14:4}}>{m.text}</div>;})}
+        {busy&&<div style={{alignSelf:"flex-start",padding:"12px 18px",background:"#1e1e32",borderRadius:14,borderBottomLeftRadius:4,color:"#888",fontSize:13}}>Kirjoittaa...</div>}
+      </div>
+      <div style={{padding:"10px 14px",borderTop:"1px solid #1e1e30",display:"flex",gap:8}}>
+        <input value={inp} onChange={function(e){setInp(e.target.value);}} onKeyDown={function(e){if(e.key==="Enter")send();}} placeholder="Kokeile kysyä jotain..." style={{flex:1,padding:"10px 12px",borderRadius:10,border:"1px solid #2a2a3a",background:"#0a0a14",color:"#fff",fontSize:13,outline:"none"}}/>
+        <button onClick={send} disabled={busy} style={{padding:"10px 16px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#e8532e,#d4421a)",color:"#fff",fontSize:13,fontWeight:600,cursor:"pointer"}}>Lähetä</button>
+      </div>
+    </div>
+    <div style={{marginTop:12,padding:"12px 16px",background:"#1a1a10",border:"1px solid #3a3a20",borderRadius:10,fontSize:13,color:"#c0c080",lineHeight:1.5}}>💡 Tämä on esikatselu. Kokeile kysymyksiä joita asiakkaasi kysyvät, ja täydennä palvelut ja FAQ:t jos botti ei osaa vastata.</div>
+  </div>);
+}
 function Wdg({ bizId }) {
   const [cp, setCp] = useState(false);
   const code = '<script>window.KORJAAMOCHAT_ID="'+bizId+'";</script>\n<script src="https://korjaamochat.vercel.app/widget.js"></script>';
@@ -142,7 +176,7 @@ export default function App() {
   if (!sess) return <Auth onLogin={login}/>;
   if (ld||!biz) return <div style={S.aw}><p style={{color:"#999"}}>Ladataan...</p></div>;
 var isAdmin = sess.user.email === ADMIN_EMAIL;
-  const tabs = isAdmin ? [{id:"admin",label:"Admin",icon:"⚡"},{id:"info",label:"Tiedot",icon:"🏪"},{id:"services",label:"Palvelut",icon:"🔧"},{id:"faq",label:"FAQ",icon:"❓"},{id:"leads",label:"Liidit",icon:"📞"},{id:"widget",label:"Asennus",icon:"📋"},{id:"logs",label:"Keskustelut",icon:"💬"}] : [{id:"info",label:"Tiedot",icon:"🏪"},{id:"services",label:"Palvelut",icon:"🔧"},{id:"faq",label:"FAQ",icon:"❓"},{id:"leads",label:"Liidit",icon:"📞"},{id:"widget",label:"Asennus",icon:"📋"},{id:"logs",label:"Keskustelut",icon:"💬"}];
+  const tabs = isAdmin ? [{id:"admin",label:"Admin",icon:"⚡"},{id:"info",label:"Tiedot",icon:"🏪"},{id:"services",label:"Palvelut",icon:"🔧"},{id:"faq",label:"FAQ",icon:"❓"},{id:"leads",label:"Liidit",icon:"📞"},{id:"test",label:"Testaa",icon:"🧪"},{id:"widget",label:"Asennus",icon:"📋"},{id:"logs",label:"Keskustelut",icon:"💬"}] : [{id:"info",label:"Tiedot",icon:"🏪"},{id:"services",label:"Palvelut",icon:"🔧"},{id:"faq",label:"FAQ",icon:"❓"},{id:"leads",label:"Liidit",icon:"📞"},{id:"test",label:"Testaa",icon:"🧪"},{id:"widget",label:"Asennus",icon:"📋"},{id:"logs",label:"Keskustelut",icon:"💬"}];{id:"info",label:"Tiedot",icon:"🏪"},{id:"services",label:"Palvelut",icon:"🔧"},{id:"faq",label:"FAQ",icon:"❓"},{id:"leads",label:"Liidit",icon:"📞"},{id:"widget",label:"Asennus",icon:"📋"},{id:"logs",label:"Keskustelut",icon:"💬"}] : [{id:"info",label:"Tiedot",icon:"🏪"},{id:"services",label:"Palvelut",icon:"🔧"},{id:"faq",label:"FAQ",icon:"❓"},{id:"leads",label:"Liidit",icon:"📞"},{id:"widget",label:"Asennus",icon:"📋"},{id:"logs",label:"Keskustelut",icon:"💬"}];
   return (<div style={{display:"flex",minHeight:"100vh",background:"#0a0a14",fontFamily:"'DM Sans',Arial,sans-serif",color:"#fff"}}><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     <div style={{width:240,background:"#12121e",borderRight:"1px solid #1e1e30",padding:"20px 16px",display:"flex",flexDirection:"column",position:"fixed",top:0,left:0,bottom:0,zIndex:50}}>
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:24}}><span style={{fontSize:24}}>🔧</span><div><div style={{color:"#fff",fontWeight:700,fontSize:16}}>Korjaamochat</div><div style={{color:"#666",fontSize:11}}>Hallintapaneeli</div></div></div>
@@ -158,6 +192,7 @@ var isAdmin = sess.user.email === ADMIN_EMAIL;
         {tab==="services"&&<Svc bizId={biz.id} token={sess.access_token}/>}
         {tab==="faq"&&<Faq bizId={biz.id} token={sess.access_token}/>}
         {tab==="leads"&&<Leads bizId={biz.id} token={sess.access_token}/>}
+{tab==="test"&&<TestChat bizId={biz.id}/>}
         {tab==="logs"&&<Logs bizId={biz.id} token={sess.access_token}/>}
       </div>
     </div>
