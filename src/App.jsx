@@ -172,23 +172,24 @@ function Logs({ bizId, token }) {
 }
 
 export default function App() {
-  const [sess, setSess] = useState(null); const [biz, setBiz] = useState(null);
+const [sess, setSess] = useState(null); const [biz, setBiz] = useState(null);
   const [tab, setTab] = useState("info"); const [ld, setLd] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const loadBiz = async (tk, uid) => { setLd(true); const d = await sb.get("businesses",tk,"user_id=eq."+uid); if(Array.isArray(d)&&d.length>0){setBiz(d[0]);}else{const n=await sb.add("businesses",{user_id:uid,name:"Uusi korjaamo"},tk);if(Array.isArray(n)&&n.length>0)setBiz(n[0]);} setLd(false); };
   const login = d => { setSess(d); loadBiz(d.access_token, d.user.id); };
   if (!sess) return <Auth onLogin={login}/>;
   if (ld||!biz) return <div style={S.aw}><p style={{color:"#999"}}>Ladataan...</p></div>;
 var isAdmin = sess.user.email === ADMIN_EMAIL;
   const tabs = isAdmin ? [{id:"admin",label:"Admin",icon:"⚡"},{id:"info",label:"Tiedot",icon:"🏪"},{id:"services",label:"Palvelut",icon:"🔧"},{id:"faq",label:"FAQ",icon:"❓"},{id:"leads",label:"Liidit",icon:"📞"},{id:"test",label:"Testaa",icon:"🧪"},{id:"widget",label:"Asennus",icon:"📋"},{id:"logs",label:"Keskustelut",icon:"💬"}] : [{id:"info",label:"Tiedot",icon:"🏪"},{id:"services",label:"Palvelut",icon:"🔧"},{id:"faq",label:"FAQ",icon:"❓"},{id:"leads",label:"Liidit",icon:"📞"},{id:"test",label:"Testaa",icon:"🧪"},{id:"widget",label:"Asennus",icon:"📋"},{id:"logs",label:"Keskustelut",icon:"💬"}];
-  return (<div style={{display:"flex",minHeight:"100vh",background:"#0a0a14",fontFamily:"'DM Sans',Arial,sans-serif",color:"#fff"}}><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-    <div style={{width:240,background:"#12121e",borderRight:"1px solid #1e1e30",padding:"20px 16px",display:"flex",flexDirection:"column",position:"fixed",top:0,left:0,bottom:0,zIndex:50}}>
+  return (<div style={{display:"flex",minHeight:"100vh",background:"#0a0a14",fontFamily:"'DM Sans',Arial,sans-serif",color:"#fff"}}><style>{".kc-sidebar{transform:translateX(-100%);transition:transform 0.2s}@media(min-width:768px){.kc-sidebar{transform:translateX(0)!important}.kc-main{margin-left:240px!important}.kc-menu-btn{display:none!important}}"}</style>/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <div style={{width:240,background:"#12121e",borderRight:"1px solid #1e1e30",padding:"20px 16px",display:"flex",flexDirection:"column",position:"fixed",top:0,left:0,bottom:0,zIndex:50,transform:menuOpen?"translateX(0)":"translateX(-100%)",transition:"transform 0.2s"}} className="kc-sidebar">
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:24}}><span style={{fontSize:24}}>🔧</span><div><div style={{color:"#fff",fontWeight:700,fontSize:16}}>Korjaamochat</div><div style={{color:"#666",fontSize:11}}>Hallintapaneeli</div></div></div>
       <div style={{padding:12,background:"#1a1a2a",borderRadius:10,marginBottom:20}}><div style={{fontSize:13,fontWeight:600,color:"#fff"}}>{biz.name}</div><div style={{fontSize:11,color:"#888"}}>{sess.user.email}</div></div>
-      <nav style={{display:"flex",flexDirection:"column",gap:4,flex:1}}>{tabs.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:8,border:"none",background:tab===t.id?"#1e1e30":"transparent",color:tab===t.id?"#fff":"#888",fontSize:14,cursor:"pointer",textAlign:"left",fontFamily:"'DM Sans',Arial,sans-serif"}}><span>{t.icon}</span><span>{t.label}</span></button>)}</nav>
+      <nav style={{display:"flex",flexDirection:"column",gap:4,flex:1}}>{tabs.map(t=><button key={t.id} onClick={()=>{setTab(t.id);setMenuOpen(false);}} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:8,border:"none",background:tab===t.id?"#1e1e30":"transparent",color:tab===t.id?"#fff":"#888",fontSize:14,cursor:"pointer",textAlign:"left",fontFamily:"'DM Sans',Arial,sans-serif"}}><span>{t.icon}</span><span>{t.label}</span></button>)}</nav>
       <button onClick={()=>{setSess(null);setBiz(null);}} style={{padding:10,borderRadius:8,border:"1px solid #2a2a3a",background:"transparent",color:"#666",fontSize:13,cursor:"pointer"}}>Kirjaudu ulos</button>
     </div>
-    <div style={{flex:1,marginLeft:240}}>
-      <div style={{padding:"20px 24px",borderBottom:"1px solid #1e1e30"}}><h1 style={{fontSize:20,fontWeight:700,margin:0}}>{tabs.find(t=>t.id===tab)?.icon} {tabs.find(t=>t.id===tab)?.label}</h1></div>
+    <div style={{flex:1,marginLeft:0}} className="kc-main">
+      <div style={{padding:"20px 24px",borderBottom:"1px solid #1e1e30",display:"flex",alignItems:"center",gap:12}}><button onClick={()=>setMenuOpen(!menuOpen)} style={{background:"#1e1e30",border:"1px solid #2a2a3a",color:"#fff",borderRadius:8,padding:"8px 12px",fontSize:18,cursor:"pointer"}} className="kc-menu-btn">☰</button><h1 style={{fontSize:20,fontWeight:700,margin:0}}>{tabs.find(t=>t.id===tab)?.icon} {tabs.find(t=>t.id===tab)?.label}</h1></div>
       <div style={{padding:24}}>
 {tab==="admin"&&isAdmin&&<Admin token={sess.access_token}/>}
         {tab==="info"&&<BizForm biz={biz} token={sess.access_token} onSave={()=>loadBiz(sess.access_token,sess.user.id)}/>}
