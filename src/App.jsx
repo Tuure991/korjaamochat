@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-
+const ADMIN_EMAIL = "talkivo.ai@gmail.com";
 const SB_URL = "https://sihadebsdzdbhaesdwfb.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNpaGFkZWJzZHpkYmhhZXNkd2ZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYzNjczMjEsImV4cCI6MjA5MTk0MzMyMX0.8xxm2RgAxGecFtaURxTHAcMIeZ0NG9a_SIjU9PFqw68";
 
@@ -54,7 +54,77 @@ function Wdg({ bizId }) {
   const code = '<script>window.KORJAAMOCHAT_ID="'+bizId+'";</script>\n<script src="https://korjaamochat.vercel.app/widget.js"></script>';
   return (<div style={S.sec}><h2 style={S.sh}>Asenna chatbot</h2><p style={S.sp}>Kopioi koodi sivujesi HTML:ään.</p><div style={{position:"relative",background:"#0a0a14",borderRadius:10,border:"1px solid #1e1e30",padding:16,marginBottom:12}}><pre style={{color:"#4ade80",fontSize:12,fontFamily:"monospace",margin:0,whiteSpace:"pre-wrap"}}>{code}</pre><button onClick={()=>{navigator.clipboard.writeText(code);setCp(true);setTimeout(()=>setCp(false),2000);}} style={{position:"absolute",top:10,right:10,padding:"6px 14px",borderRadius:6,border:"1px solid #3a3a4a",background:"#1e1e30",color:"#fff",fontSize:12,cursor:"pointer"}}>{cp?"✓ Kopioitu!":"Kopioi"}</button></div></div>);
 }
+function Admin({ token }) {
+  const [bizs, setBizs] = useState([]);
+  const [leads, setLeads] = useState([]);
+  const [logs, setLogs] = useState([]);
+  const [ld, setLd] = useState(true);
+  const [view, setView] = useState("businesses");
 
+  useEffect(() => {
+    const load = async () => {
+      const h = { "Content-Type": "application/json", "apikey": SB_KEY, "Authorization": "Bearer " + SB_KEY };
+      const [b, l, c] = await Promise.all([
+        fetch(SB_URL + "/rest/v1/businesses?order=created_at.desc", { headers: h }).then(r => r.json()),
+        fetch(SB_URL + "/rest/v1/leads?order=created_at.desc&limit=100", { headers: h }).then(r => r.json()),
+        fetch(SB_URL + "/rest/v1/chat_logs?order=created_at.desc&limit=100", { headers: h }).then(r => r.json())
+      ]);
+      if (Array.isArray(b)) setBizs(b);
+      if (Array.isArray(l)) setLeads(l);
+      if (Array.isArray(c)) setLogs(c);
+      setLd(false);
+    };
+    load();
+    const i = setInterval(() => { load(); }, 30000);
+    return () => clearInterval(i);
+  }, []);
+
+  if (ld) return <p style={{color:"#999"}}>Ladataan admin-dataa...</p>;
+
+  return (<div style={S.sec}>
+    <div style={{display:"flex",gap:8,marginBottom:20}}>
+      {[{id:"businesses",label:"Asiakkaat ("+bizs.length+")",icon:"🏪"},{id:"leads",label:"Liidit ("+leads.length+")",icon:"📞"},{id:"chats",label:"Keskustelut ("+logs.length+")",icon:"💬"}].map(t=>
+        <button key={t.id} onClick={()=>setView(t.id)} style={{padding:"8px 16px",borderRadius:8,border:"1px solid "+(view===t.id?"#e8532e":"#2a2a3a"),background:view===t.id?"#1e1e30":"transparent",color:view===t.id?"#fff":"#888",fontSize:13,cursor:"pointer"}}>{t.icon} {t.label}</button>
+      )}
+    </div>
+
+    {view==="businesses"&&<div>
+      <h2 style={S.sh}>Kaikki asiakkaat</h2>
+      {bizs.map(b=><div key={b.id} style={S.card}><div>
+        <div style={S.ct}>{b.name}</div>
+        <div style={S.cm}>{b.address||"Ei osoitetta"} · {b.phone||"Ei puhelinta"} · {b.email||"Ei sähköpostia"}</div>
+        <div style={{fontSize:11,color:"#555",marginTop:4}}>ID: {b.id}</div>
+        <div style={{fontSize:11,color:"#555"}}>Luotu: {new Date(b.created_at).toLocaleString("fi-FI")}</div>
+      </div></div>)}
+    </div>}
+
+    {view==="leads"&&<div>
+      <h2 style={S.sh}>Kaikki liidit</h2>
+      {leads.length===0?<p style={{color:"#666"}}>Ei liidejä vielä.</p>:leads.map(l=>{
+        var biz = bizs.find(function(b){return b.id===l.business_id;});
+        return <div key={l.id} style={{...S.card,borderLeft:"3px solid #4ade80"}}><div>
+          <div style={S.ct}>{l.name} — <a href={"tel:"+l.phone} style={{color:"#e8532e",textDecoration:"none"}}>{l.phone}</a></div>
+          <div style={S.cm}>Korjaamo: {biz?biz.name:"Tuntematon"}</div>
+          {l.message&&<div style={S.cm}>{l.message}</div>}
+          <div style={{fontSize:11,color:"#555",marginTop:4}}>{new Date(l.created_at).toLocaleString("fi-FI")}</div>
+        </div></div>;
+      })}
+    </div>}
+
+    {view==="chats"&&<div>
+      <h2 style={S.sh}>Kaikki keskustelut</h2>
+      {logs.length===0?<p style={{color:"#666"}}>Ei keskusteluja vielä.</p>:logs.map(l=>{
+        var biz = bizs.find(function(b){return b.id===l.business_id;});
+        return <div key={l.id} style={S.card}><div>
+          <div style={{fontSize:11,color:"#e8532e",marginBottom:4}}>{biz?biz.name:"Tuntematon"}</div>
+          <div style={S.ct}>Asiakas: {l.visitor_message}</div>
+          <div style={S.cm}>Botti: {l.bot_response}</div>
+          <div style={{fontSize:11,color:"#555",marginTop:4}}>{new Date(l.created_at).toLocaleString("fi-FI")}</div>
+        </div></div>;
+      })}
+    </div>}
+  </div>);
+}
 function Logs({ bizId, token }) {
   const [ls, setLs] = useState([]); const [ld, setLd] = useState(true);
   useEffect(()=>{ const f=async()=>{const d=await sb.get("chat_logs",token,"business_id=eq."+bizId+"&order=created_at.desc&limit=50");if(Array.isArray(d))setLs(d);setLd(false);}; f(); },[bizId]);
@@ -68,7 +138,8 @@ export default function App() {
   const login = d => { setSess(d); loadBiz(d.access_token, d.user.id); };
   if (!sess) return <Auth onLogin={login}/>;
   if (ld||!biz) return <div style={S.aw}><p style={{color:"#999"}}>Ladataan...</p></div>;
-const tabs = [{id:"info",label:"Tiedot",icon:"🏪"},{id:"services",label:"Palvelut",icon:"🔧"},{id:"faq",label:"FAQ",icon:"❓"},{id:"leads",label:"Liidit",icon:"📞"},{id:"widget",label:"Asennus",icon:"📋"},{id:"logs",label:"Keskustelut",icon:"💬"}];
+var isAdmin = sess.user.email === ADMIN_EMAIL;
+  const tabs = isAdmin ? [{id:"admin",label:"Admin",icon:"⚡"},{id:"info",label:"Tiedot",icon:"🏪"},{id:"services",label:"Palvelut",icon:"🔧"},{id:"faq",label:"FAQ",icon:"❓"},{id:"leads",label:"Liidit",icon:"📞"},{id:"widget",label:"Asennus",icon:"📋"},{id:"logs",label:"Keskustelut",icon:"💬"}] : [{id:"info",label:"Tiedot",icon:"🏪"},{id:"services",label:"Palvelut",icon:"🔧"},{id:"faq",label:"FAQ",icon:"❓"},{id:"leads",label:"Liidit",icon:"📞"},{id:"widget",label:"Asennus",icon:"📋"},{id:"logs",label:"Keskustelut",icon:"💬"}];
   return (<div style={{display:"flex",minHeight:"100vh",background:"#0a0a14",fontFamily:"'DM Sans',Arial,sans-serif",color:"#fff"}}><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     <div style={{width:240,background:"#12121e",borderRight:"1px solid #1e1e30",padding:"20px 16px",display:"flex",flexDirection:"column",position:"fixed",top:0,left:0,bottom:0,zIndex:50}}>
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:24}}><span style={{fontSize:24}}>🔧</span><div><div style={{color:"#fff",fontWeight:700,fontSize:16}}>Korjaamochat</div><div style={{color:"#666",fontSize:11}}>Hallintapaneeli</div></div></div>
@@ -79,6 +150,7 @@ const tabs = [{id:"info",label:"Tiedot",icon:"🏪"},{id:"services",label:"Palve
     <div style={{flex:1,marginLeft:240}}>
       <div style={{padding:"20px 24px",borderBottom:"1px solid #1e1e30"}}><h1 style={{fontSize:20,fontWeight:700,margin:0}}>{tabs.find(t=>t.id===tab)?.icon} {tabs.find(t=>t.id===tab)?.label}</h1></div>
       <div style={{padding:24}}>
+{tab==="admin"&&isAdmin&&<Admin token={sess.access_token}/>}
         {tab==="info"&&<BizForm biz={biz} token={sess.access_token} onSave={()=>loadBiz(sess.access_token,sess.user.id)}/>}
         {tab==="services"&&<Svc bizId={biz.id} token={sess.access_token}/>}
         {tab==="faq"&&<Faq bizId={biz.id} token={sess.access_token}/>}
