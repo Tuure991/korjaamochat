@@ -24,7 +24,8 @@ export default async function handler(req, res) {
     const b = biz[0];
 console.log("BIZ DEBUG: "+JSON.stringify(b));
     var monthAgo = new Date(Date.now() - 30*24*60*60*1000).toISOString();
-    var countRes = await fetch(SB_URL + "/rest/v1/chat_logs?business_id=eq." + businessId + "&created_at=gte." + monthAgo + "&select=id", { headers: {...headers, "Range": "0-0", "Prefer": "count=exact"} });
+    var serviceKey = process.env.SUPABASE_SERVICE_KEY || SB_KEY;
+    var countRes = await fetch(SB_URL + "/rest/v1/chat_logs?business_id=eq." + businessId + "&created_at=gte." + monthAgo + "&select=id", { headers: {"apikey": serviceKey, "Authorization": "Bearer " + serviceKey, "Range": "0-0", "Prefer": "count=exact"} });
     var cr = countRes.headers.get("content-range") || "";
     var usedCount = parseInt(cr.split("/")[1] || "0");
     console.log("COUNT HEADER: "+cr);
