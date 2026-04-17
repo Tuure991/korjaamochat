@@ -196,7 +196,7 @@ var isAdmin = sess.user.email === ADMIN_EMAIL;
         {tab==="faq"&&<Faq bizId={biz.id} token={sess.access_token}/>}
         {tab==="leads"&&<Leads bizId={biz.id} token={sess.access_token}/>}
 {tab==="test"&&<TestChat bizId={biz.id}/>}
-        {tab==="logs"&&<Logs bizId={biz.id} token={sess.access_token}/>}
+        {tab==="widget"&&<Wdg bizId={biz.id}/>}        {tab==="logs"&&<Logs bizId={biz.id} token={sess.access_token}/>}
       </div>
     </div>
   </div>);
