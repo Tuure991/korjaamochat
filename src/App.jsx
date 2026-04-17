@@ -55,6 +55,72 @@ function Leads({ bizId, token }) {
   const labels = {new:"Uusi",contacted:"Kontaktoitu",done:"Hoidettu"};
   return (<div style={S.sec}><h2 style={S.sh}>Liidit</h2><p style={S.sp}>Soittopyynnöt chatbotista. Päivittyy automaattisesti.</p>{ld?<p style={{color:"#666"}}>Ladataan...</p>:ls.length===0?<div style={{textAlign:"center",padding:"40px 20px",color:"#666"}}><div style={{fontSize:32,marginBottom:8}}>📞</div><div>Ei vielä liidejä.</div></div>:ls.map(l=><div key={l.id} style={{...S.card,borderLeft:"3px solid "+(colors[l.status]||colors.new)}}><div style={{flex:1}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}><div style={S.ct}>{l.name} — <a href={"tel:"+l.phone} style={{color:"#e8532e",textDecoration:"none"}}>{l.phone}</a></div><span style={{fontSize:11,padding:"2px 8px",borderRadius:10,background:(colors[l.status]||colors.new)+"22",color:colors[l.status]||colors.new}}>{labels[l.status]||"Uusi"}</span></div>{l.message&&<div style={S.cm}>{l.message}</div>}<div style={{fontSize:11,color:"#555",marginTop:4}}>{new Date(l.created_at).toLocaleString("fi-FI")}</div><div style={{display:"flex",gap:6,marginTop:8}}>{["new","contacted","done"].map(s=><button key={s} onClick={()=>setStatus(l.id,s)} style={{padding:"4px 12px",borderRadius:6,border:"1px solid "+(l.status===s?colors[s]:"#2a2a3a"),background:l.status===s?colors[s]+"22":"transparent",color:l.status===s?colors[s]:"#888",fontSize:11,cursor:"pointer"}}>{labels[s]}</button>)}</div></div></div>)}</div>);
 }
+function Analytics({ bizId, token }) {
+  const [logs, setLogs] = useState([]);
+  const [leads, setLeads] = useState([]);
+  const [ld, setLd] = useState(true);
+  useEffect(()=>{
+    const load=async()=>{
+      const [l,r]=await Promise.all([
+        sb.get("chat_logs",token,"business_id=eq."+bizId+"&order=created_at.desc&limit=500"),
+        sb.get("leads",token,"business_id=eq."+bizId+"&order=created_at.desc")
+      ]);
+      if(Array.isArray(l))setLogs(l);
+      if(Array.isArray(r))setLeads(r);
+      setLd(false);
+    };load();
+  },[bizId]);
+
+  if(ld)return <p style={{color:"#666"}}>Ladataan...</p>;
+
+  var today=new Date().toDateString();
+  var week=Date.now()-7*24*60*60*1000;
+  var month=Date.now()-30*24*60*60*1000;
+  var todayLogs=logs.filter(function(l){return new Date(l.created_at).toDateString()===today;});
+  var weekLogs=logs.filter(function(l){return new Date(l.created_at).getTime()>week;});
+  var monthLogs=logs.filter(function(l){return new Date(l.created_at).getTime()>month;});
+  var todayLeads=leads.filter(function(l){return new Date(l.created_at).toDateString()===today;});
+  var weekLeads=leads.filter(function(l){return new Date(l.created_at).getTime()>week;});
+
+  var questions={};
+  logs.forEach(function(l){if(l.visitor_message){var q=l.visitor_message.toLowerCase().trim();questions[q]=(questions[q]||0)+1;}});
+  var topQ=Object.entries(questions).sort(function(a,b){return b[1]-a[1];}).slice(0,8);
+
+  var days={};
+  weekLogs.forEach(function(l){var d=new Date(l.created_at).toLocaleDateString("fi-FI",{weekday:"short",day:"numeric",month:"numeric"});days[d]=(days[d]||0)+1;});
+  var maxDay=Math.max(...Object.values(days),1);
+
+  return (<div style={S.sec}>
+    <h2 style={S.sh}>Analytiikka</h2>
+    <p style={S.sp}>Chatbotin käyttötilastot.</p>
+
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:24}}>
+      {[{label:"Tänään",chats:todayLogs.length,leads:todayLeads.length},{label:"7 päivää",chats:weekLogs.length,leads:weekLeads.length},{label:"30 päivää",chats:monthLogs.length,leads:leads.length}].map(function(s,i){return <div key={i} style={{background:"#12121e",borderRadius:12,border:"1px solid #1e1e30",padding:"16px"}}>
+        <div style={{fontSize:11,color:"#888",textTransform:"uppercase",letterSpacing:0.5}}>{s.label}</div>
+        <div style={{fontSize:28,fontWeight:700,color:"#fff",marginTop:4}}>{s.chats}</div>
+        <div style={{fontSize:12,color:"#888"}}>keskustelua</div>
+        <div style={{fontSize:18,fontWeight:600,color:"#4ade80",marginTop:8}}>{s.leads}</div>
+        <div style={{fontSize:11,color:"#888"}}>liidiä</div>
+      </div>;})}
+    </div>
+
+    <h3 style={{fontSize:15,fontWeight:600,color:"#fff",marginBottom:12}}>Keskustelut per päivä (7 pv)</h3>
+    <div style={{display:"flex",gap:6,alignItems:"flex-end",height:120,marginBottom:24,background:"#12121e",borderRadius:12,border:"1px solid #1e1e30",padding:"16px 12px"}}>
+      {Object.entries(days).map(function(d,i){return <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+        <div style={{fontSize:11,color:"#fff",fontWeight:600}}>{d[1]}</div>
+        <div style={{width:"100%",height:Math.max(d[1]/maxDay*80,4),background:"linear-gradient(180deg,#e8532e,#d4421a)",borderRadius:4}}></div>
+        <div style={{fontSize:9,color:"#666"}}>{d[0]}</div>
+      </div>;})}
+      {Object.keys(days).length===0&&<div style={{color:"#666",fontSize:13,margin:"auto"}}>Ei vielä dataa</div>}
+    </div>
+
+    <h3 style={{fontSize:15,fontWeight:600,color:"#fff",marginBottom:12}}>Suosituimmat kysymykset</h3>
+    {topQ.length===0?<p style={{color:"#666",fontSize:13}}>Ei vielä kysymyksiä.</p>:topQ.map(function(q,i){return <div key={i} style={{...S.card,justifyContent:"space-between"}}>
+      <div style={{fontSize:13,color:"#e8e8f0",flex:1}}>{q[0]}</div>
+      <div style={{fontSize:13,fontWeight:700,color:"#e8532e",minWidth:30,textAlign:"right"}}>{q[1]}x</div>
+    </div>;})}
+  </div>);
+}
 function TestChat({ bizId }) {
   const [msgs, setMsgs] = useState([{role:"assistant",text:"Hei! Kokeile chatbottiasi täällä."}]);
   const [inp, setInp] = useState("");
@@ -180,7 +246,7 @@ const [sess, setSess] = useState(null); const [biz, setBiz] = useState(null);
   if (!sess) return <Auth onLogin={login}/>;
   if (ld||!biz) return <div style={S.aw}><p style={{color:"#999"}}>Ladataan...</p></div>;
 var isAdmin = sess.user.email === ADMIN_EMAIL;
-  const tabs = isAdmin ? [{id:"admin",label:"Admin",icon:"⚡"},{id:"info",label:"Tiedot",icon:"🏪"},{id:"services",label:"Palvelut",icon:"🔧"},{id:"faq",label:"FAQ",icon:"❓"},{id:"leads",label:"Liidit",icon:"📞"},{id:"test",label:"Testaa",icon:"🧪"},{id:"widget",label:"Asennus",icon:"📋"},{id:"logs",label:"Keskustelut",icon:"💬"}] : [{id:"info",label:"Tiedot",icon:"🏪"},{id:"services",label:"Palvelut",icon:"🔧"},{id:"faq",label:"FAQ",icon:"❓"},{id:"leads",label:"Liidit",icon:"📞"},{id:"test",label:"Testaa",icon:"🧪"},{id:"widget",label:"Asennus",icon:"📋"},{id:"logs",label:"Keskustelut",icon:"💬"}];
+  const tabs = isAdmin ? [{id:"admin",label:"Admin",icon:"⚡"},{id:"info",label:"Tiedot",icon:"🏪"},{id:"services",label:"Palvelut",icon:"🔧"},{id:"faq",label:"FAQ",icon:"❓"},{id:"analytics",label:"Tilastot",icon:"📊"},{id:"leads",label:"Liidit",icon:"📞"},{id:"test",label:"Testaa",icon:"🧪"},{id:"widget",label:"Asennus",icon:"📋"},{id:"logs",label:"Keskustelut",icon:"💬"}] : [{id:"info",label:"Tiedot",icon:"🏪"},{id:"services",label:"Palvelut",icon:"🔧"},{id:"faq",label:"FAQ",icon:"❓"},{id:"analytics",label:"Tilastot",icon:"📊"},{id:"leads",label:"Liidit",icon:"📞"},{id:"test",label:"Testaa",icon:"🧪"},{id:"widget",label:"Asennus",icon:"📋"},{id:"logs",label:"Keskustelut",icon:"💬"}];
   return (<div style={{display:"flex",minHeight:"100vh",background:"#0a0a14",fontFamily:"'DM Sans',Arial,sans-serif",color:"#fff"}}><style>{".kc-sidebar{transform:translateX(-100%);transition:transform 0.2s}@media(min-width:768px){.kc-sidebar{transform:translateX(0)!important}.kc-main{margin-left:240px!important}.kc-menu-btn{display:none!important}}"}</style><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     <div style={{width:240,background:"#12121e",borderRight:"1px solid #1e1e30",padding:"20px 16px",display:"flex",flexDirection:"column",position:"fixed",top:0,left:0,bottom:0,zIndex:50,transform:menuOpen?"translateX(0)":"translateX(-100%)",transition:"transform 0.2s"}} className="kc-sidebar">
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:24}}><span style={{fontSize:24}}>🔧</span><div><div style={{color:"#fff",fontWeight:700,fontSize:16}}>Korjaamochat</div><div style={{color:"#666",fontSize:11}}>Hallintapaneeli</div></div></div>
@@ -195,7 +261,8 @@ var isAdmin = sess.user.email === ADMIN_EMAIL;
         {tab==="info"&&<BizForm biz={biz} token={sess.access_token} onSave={()=>loadBiz(sess.access_token,sess.user.id)}/>}
         {tab==="services"&&<Svc bizId={biz.id} token={sess.access_token}/>}
         {tab==="faq"&&<Faq bizId={biz.id} token={sess.access_token}/>}
-        {tab==="leads"&&<Leads bizId={biz.id} token={sess.access_token}/>}
+        {tab==="analytics"&&<Analytics bizId={biz.id} token={sess.access_token}/>}
+{tab==="leads"&&<Leads bizId={biz.id} token={sess.access_token}/>}
 {tab==="test"&&<TestChat bizId={biz.id}/>}
         {tab==="widget"&&<Wdg bizId={biz.id}/>}        {tab==="logs"&&<Logs bizId={biz.id} token={sess.access_token}/>}
       </div>
