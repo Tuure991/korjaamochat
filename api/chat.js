@@ -22,7 +22,7 @@ export default async function handler(req, res) {
 
    if (!biz || biz.length === 0) return res.status(404).json({ error: "Business not found" });
     const b = biz[0];
-
+console.log("BIZ DEBUG: "+JSON.stringify(b));
     var monthAgo = new Date(Date.now() - 30*24*60*60*1000).toISOString();
     var countRes = await fetch(SB_URL + "/rest/v1/chat_logs?business_id=eq." + businessId + "&created_at=gte." + monthAgo + "&select=id", { headers: {...headers, "Prefer": "count=exact"} });
     var usedCount = parseInt(countRes.headers.get("content-range")?.split("/")[1] || "0");
