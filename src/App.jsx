@@ -260,8 +260,8 @@ export default function App() {
 const [sess, setSess] = useState(null); const [biz, setBiz] = useState(null);
   const [tab, setTab] = useState("info"); const [ld, setLd] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const loadBiz = async (tk, uid) => { setLd(true); const d = await sb.get("businesses",tk,"user_id=eq."+uid); if(Array.isArray(d)&&d.length>0){setBiz(d[0]);}else{const n=await sb.add("businesses",{user_id:uid,name:"Uusi korjaamo"},tk);if(Array.isArray(n)&&n.length>0)setBiz(n[0]);} setLd(false); };
-  const login = d => { setSess(d); loadBiz(d.access_token, d.user.id); };
+const [usage, setUsage] = useState(0);
+  const loadBiz = async (tk, uid) => { setLd(true); const d = await sb.get("businesses",tk,"user_id=eq."+uid); if(Array.isArray(d)&&d.length>0){setBiz(d[0]); var monthAgo=new Date(Date.now()-30*24*60*60*1000).toISOString(); var r=await fetch(SB_URL+"/rest/v1/chat_logs?business_id=eq."+d[0].id+"&created_at=gte."+monthAgo+"&select=id",{headers:{"apikey":SB_KEY,"Authorization":"Bearer "+tk,"Prefer":"count=exact"}}); var c=parseInt(r.headers.get("content-range")?.split("/")[1]||"0"); setUsage(c);}else{const n=await sb.add("businesses",{user_id:uid,name:"Uusi korjaamo"},tk);if(Array.isArray(n)&&n.length>0)setBiz(n[0]);} setLd(false); };  const login = d => { setSess(d); loadBiz(d.access_token, d.user.id); };
   if (!sess) return <Auth onLogin={login}/>;
   if (ld||!biz) return <div style={S.aw}><p style={{color:"#999"}}>Ladataan...</p></div>;
 var isAdmin = sess.user.email === ADMIN_EMAIL;
@@ -274,7 +274,13 @@ var isAdmin = sess.user.email === ADMIN_EMAIL;
       <button onClick={()=>{setSess(null);setBiz(null);}} style={{padding:10,borderRadius:8,border:"1px solid #2a2a3a",background:"transparent",color:"#666",fontSize:13,cursor:"pointer"}}>Kirjaudu ulos</button>
     </div>
     <div style={{flex:1,marginLeft:0}} className="kc-main">
-      <div style={{padding:"20px 24px",borderBottom:"1px solid #1e1e30",display:"flex",alignItems:"center",gap:12}}><button onClick={()=>setMenuOpen(!menuOpen)} style={{background:"#1e1e30",border:"1px solid #2a2a3a",color:"#fff",borderRadius:8,padding:"8px 12px",fontSize:18,cursor:"pointer"}} className="kc-menu-btn">☰</button><h1 style={{fontSize:20,fontWeight:700,margin:0}}>{tabs.find(t=>t.id===tab)?.icon} {tabs.find(t=>t.id===tab)?.label}</h1></div>
+{biz && usage >= (biz.message_limit||500)*0.9 && (<div style={{padding:"12px 20px",background:usage>=(biz.message_limit||500)?"#2a1015":"#2a2015",borderBottom:"1px solid "+(usage>=(biz.message_limit||500)?"#5a2030":"#5a4020"),display:"flex",alignItems:"center",gap:10}}>
+        <span style={{fontSize:18}}>{usage>=(biz.message_limit||500)?"🚫":"⚠️"}</span>
+        <div style={{flex:1,fontSize:13,color:usage>=(biz.message_limit||500)?"#ff6b6b":"#eab308"}}>
+          {usage>=(biz.message_limit||500)?<><strong>Viestiraja täynnä!</strong> Chatbot ei vastaa enää asiakkaille tässä kuussa. Ota yhteyttä lisärajan saamiseksi.</>:<><strong>Viestiraja lähes täynnä:</strong> {usage}/{biz.message_limit||500} viestiä käytetty tässä kuussa.</>}
+        </div>
+      </div>)}
+<div style={{padding:"20px 24px",borderBottom:"1px solid #1e1e30",display:"flex",alignItems:"center",gap:12}}><button onClick={()=>setMenuOpen(!menuOpen)} style={{background:"#1e1e30",border:"1px solid #2a2a3a",color:"#fff",borderRadius:8,padding:"8px 12px",fontSize:18,cursor:"pointer"}} className="kc-menu-btn">☰</button><h1 style={{fontSize:20,fontWeight:700,margin:0}}>{tabs.find(t=>t.id===tab)?.icon} {tabs.find(t=>t.id===tab)?.label}</h1></div>
       <div style={{padding:24}}>
 {tab==="admin"&&isAdmin&&<Admin token={sess.access_token}/>}
         {tab==="info"&&<BizForm biz={biz} token={sess.access_token} onSave={()=>loadBiz(sess.access_token,sess.user.id)}/>}
