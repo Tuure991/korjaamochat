@@ -10,7 +10,7 @@ const sb = {
   async get(tbl, tk, q) { const r = await fetch(SB_URL + "/rest/v1/" + tbl + "?" + (q || ""), { headers: this.h(tk) }); return r.json(); },
   async add(tbl, d, tk) { const r = await fetch(SB_URL + "/rest/v1/" + tbl, { method: "POST", headers: { ...this.h(tk), "Prefer": "return=representation" }, body: JSON.stringify(d) }); return r.json(); },
   async upd(tbl, id, d, tk) { const r = await fetch(SB_URL + "/rest/v1/" + tbl + "?id=eq." + id, { method: "PATCH", headers: { ...this.h(tk), "Prefer": "return=representation" }, body: JSON.stringify(d) }); return r.json(); },
-  async del(tbl, id, tk) { await fetch(SB_URL + "/rest/v1/" + tbl + "?id=eq." + id, { method: "DELETE", headers: this.h(tk) });},
+  async del(tbl, id, tk) { await fetch(SB_URL + "/rest/v1/" + tbl + "?id=eq." + id, { method: "DELETE", headers: this.h(tk) }); },
   async updatePassword(newPw, token) {
     const r = await fetch(SB_URL + "/auth/v1/user", {
       method: "PUT",
