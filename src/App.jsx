@@ -10,7 +10,23 @@ const sb = {
   async get(tbl, tk, q) { const r = await fetch(SB_URL + "/rest/v1/" + tbl + "?" + (q || ""), { headers: this.h(tk) }); return r.json(); },
   async add(tbl, d, tk) { const r = await fetch(SB_URL + "/rest/v1/" + tbl, { method: "POST", headers: { ...this.h(tk), "Prefer": "return=representation" }, body: JSON.stringify(d) }); return r.json(); },
   async upd(tbl, id, d, tk) { const r = await fetch(SB_URL + "/rest/v1/" + tbl + "?id=eq." + id, { method: "PATCH", headers: { ...this.h(tk), "Prefer": "return=representation" }, body: JSON.stringify(d) }); return r.json(); },
-  async del(tbl, id, tk) { await fetch(SB_URL + "/rest/v1/" + tbl + "?id=eq." + id, { method: "DELETE", headers: this.h(tk) }); }
+  async del(tbl, id, tk) { await fetch(SB_URL + "/rest/v1/" + tbl + "?id=eq." + id, { method: "DELETE", headers: this.h(tk) });,
+  async updatePassword(newPw, token) {
+    const r = await fetch(SB_URL + "/auth/v1/user", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "apikey": SB_KEY, "Authorization": "Bearer " + token },
+      body: JSON.stringify({ password: newPw })
+    });
+    return r.json();
+  },
+  async resetPassword(email) {
+    const r = await fetch(SB_URL + "/auth/v1/recover", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "apikey": SB_KEY },
+      body: JSON.stringify({ email })
+    });
+    return r.json();
+  } }
 };
 
 function Auth({ onLogin }) {
@@ -18,7 +34,8 @@ function Auth({ onLogin }) {
   const [err, setErr] = useState(""); const [busy, setBusy] = useState(false); const [done, setDone] = useState(false);
   const go = async () => { setErr(""); setBusy(true); try { if (nu) { const d = await sb.signUp(em, pw); if (d.error) { setErr(d.error.message); setBusy(false); return; } setDone(true); } else { const d = await sb.signIn(em, pw); if (d.error) { setErr(d.error.message || d.error_description); setBusy(false); return; } onLogin(d); } } catch(e) { setErr("Yhteysvirhe"); } setBusy(false); };
   if (done) return (<div style={S.aw}><div style={S.ab}><div style={{fontSize:48}}>📧</div><h1 style={S.ah}>Tarkista sähköpostisi</h1><p style={S.ap}>Vahvistuslinkki lähetetty: <strong>{em}</strong></p><button style={S.btn} onClick={()=>{setNu(false);setDone(false);}}>Takaisin</button></div></div>);
-  return (<div style={S.aw}><div style={S.ab}><div style={{fontSize:48,marginBottom:8}}>🔧</div><h1 style={S.ah}>Korjaamochat</h1><p style={S.ap}>{nu?"Luo uusi tili":"Kirjaudu hallintapaneeliin"}</p>{err&&<div style={S.er}>{err}</div>}<input type="email" placeholder="Sähköposti" value={em} onChange={e=>setEm(e.target.value)} style={S.inp}/><input type="password" placeholder="Salasana (min 6 merkkiä)" value={pw} onChange={e=>setPw(e.target.value)} style={S.inp} onKeyDown={e=>e.key==="Enter"&&go()}/><button style={S.btn} onClick={go} disabled={busy}>{busy?"Odota...":nu?"Luo tili":"Kirjaudu"}</button><button style={S.lnk} onClick={()=>{setNu(!nu);setErr("");}}>{nu?"Onko jo tili? Kirjaudu":"Ei tiliä? Luo uusi"}</button></div></div>);
+  return (<div style={S.aw}><div style={S.ab}><div style={{fontSize:48,marginBottom:8}}>🔧</div><h1 style={S.ah}>Korjaamochat</h1><p style={S.ap}>{nu?"Luo uusi tili":"Kirjaudu hallintapaneeliin"}</p>{err&&<div style={S.er}>{err}</div>}<input type="email" placeholder="Sähköposti" value={em} onChange={e=>setEm(e.target.value)} style={S.inp}/><input type="password" placeholder="Salasana (min 6 merkkiä)" value={pw} onChange={e=>setPw(e.target.value)} style={S.inp} onKeyDown={e=>e.key==="Enter"&&go()}/><button style={S.btn} onClick={go} disabled={busy}>{busy?"Odota...":nu?"Luo tili":"Kirjaudu"}</button>/div><button style={S.lnk} onClick={()=>{setNu(!nu);setErr("");}}>{nu?"Onko jo tili? Kirjaudu":"Ei tiliä? Luo uusi"}</button>
+{!nu && <button style={{...S.lnk,color:"#888",marginTop:8}} onClick={async()=>{if(!em){setErr("Syötä sähköposti");return;}const r=await sb.resetPassword(em);setErr("");setDone(false);alert("Jos tili löytyy, lähetimme salasanan vaihtolinkin sähköpostiisi.");}}>Unohditko salasanasi?</button>}</div>);
 }
 
 function BizForm({ biz, token, onSave }) {
@@ -119,6 +136,47 @@ function Analytics({ bizId, token }) {
       <div style={{fontSize:13,color:"#e8e8f0",flex:1}}>{q[0]}</div>
       <div style={{fontSize:13,fontWeight:700,color:"#e8532e",minWidth:30,textAlign:"right"}}>{q[1]}x</div>
     </div>;})}
+  </div>);
+}
+function Settings({ sess }) {
+  const [pw, setPw] = useState("");
+  const [pw2, setPw2] = useState("");
+  const [msg, setMsg] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const change = async () => {
+    setMsg("");
+    if (pw.length < 6) { setMsg("Salasanan pitää olla vähintään 6 merkkiä"); return; }
+    if (pw !== pw2) { setMsg("Salasanat eivät täsmää"); return; }
+    setBusy(true);
+    const r = await sb.updatePassword(pw, sess.access_token);
+    setBusy(false);
+    if (r.error) { setMsg("Virhe: " + r.error.message); return; }
+    setMsg("✓ Salasana vaihdettu");
+    setPw(""); setPw2("");
+    setTimeout(() => setMsg(""), 3000);
+  };
+
+  return (<div style={S.sec}>
+    <h2 style={S.sh}>Asetukset</h2>
+    <p style={S.sp}>Muokkaa tilisi asetuksia.</p>
+
+    <div style={{background:"#12121e",borderRadius:12,border:"1px solid #1e1e30",padding:"20px",marginBottom:16}}>
+      <h3 style={{fontSize:15,fontWeight:600,color:"#fff",margin:"0 0 12px"}}>Tilisi tiedot</h3>
+      <div style={{fontSize:13,color:"#888",marginBottom:6}}>Sähköposti</div>
+      <div style={{fontSize:14,color:"#fff",marginBottom:8}}>{sess.user.email}</div>
+    </div>
+
+    <div style={{background:"#12121e",borderRadius:12,border:"1px solid #1e1e30",padding:"20px"}}>
+      <h3 style={{fontSize:15,fontWeight:600,color:"#fff",margin:"0 0 8px"}}>Vaihda salasana</h3>
+      <p style={{fontSize:12,color:"#888",margin:"0 0 14px"}}>Salasanan pitää olla vähintään 6 merkkiä pitkä.</p>
+      {msg && <div style={{padding:"10px 14px",background:msg.startsWith("✓")?"#0a2a15":"#2a1015",border:"1px solid "+(msg.startsWith("✓")?"#2a5a30":"#5a2030"),color:msg.startsWith("✓")?"#4ade80":"#ff6b6b",borderRadius:8,fontSize:13,marginBottom:12}}>{msg}</div>}
+      <label style={S.lbl}>Uusi salasana</label>
+      <input type="password" style={S.inp} value={pw} onChange={e=>setPw(e.target.value)} placeholder="Vähintään 6 merkkiä"/>
+      <label style={S.lbl}>Vahvista uusi salasana</label>
+      <input type="password" style={S.inp} value={pw2} onChange={e=>setPw2(e.target.value)} placeholder="Kirjoita salasana uudelleen"/>
+      <button style={S.btn} onClick={change} disabled={busy}>{busy?"Odota...":"Vaihda salasana"}</button>
+    </div>
   </div>);
 }
 function TestChat({ bizId }) {
@@ -265,7 +323,7 @@ const [usage, setUsage] = useState(0);
   if (!sess) return <Auth onLogin={login}/>;
   if (ld||!biz) return <div style={S.aw}><p style={{color:"#999"}}>Ladataan...</p></div>;
 var isAdmin = sess.user.email === ADMIN_EMAIL;
-  const tabs = isAdmin ? [{id:"admin",label:"Admin",icon:"⚡"},{id:"info",label:"Tiedot",icon:"🏪"},{id:"services",label:"Palvelut",icon:"🔧"},{id:"faq",label:"FAQ",icon:"❓"},{id:"analytics",label:"Tilastot",icon:"📊"},{id:"leads",label:"Liidit",icon:"📞"},{id:"test",label:"Testaa",icon:"🧪"},{id:"widget",label:"Asennus",icon:"📋"},{id:"logs",label:"Keskustelut",icon:"💬"}] : [{id:"info",label:"Tiedot",icon:"🏪"},{id:"services",label:"Palvelut",icon:"🔧"},{id:"faq",label:"FAQ",icon:"❓"},{id:"analytics",label:"Tilastot",icon:"📊"},{id:"leads",label:"Liidit",icon:"📞"},{id:"test",label:"Testaa",icon:"🧪"},{id:"widget",label:"Asennus",icon:"📋"},{id:"logs",label:"Keskustelut",icon:"💬"}];
+  const tabs = isAdmin ? [{id:"admin",label:"Admin",icon:"⚡"},{id:"info",label:"Tiedot",icon:"🏪"},{id:"services",label:"Palvelut",icon:"🔧"},{id:"faq",label:"FAQ",icon:"❓"},{id:"analytics",label:"Tilastot",icon:"📊"},{id:"leads",label:"Liidit",icon:"📞"},{id:"test",label:"Testaa",icon:"🧪"},{id:"widget",label:"Asennus",icon:"📋"},{id:"logs",label:"Keskustelut",icon:"💬"},{id:"settings",label:"Asetukset",icon:"⚙️"}] : [{id:"info",label:"Tiedot",icon:"🏪"},{id:"services",label:"Palvelut",icon:"🔧"},{id:"faq",label:"FAQ",icon:"❓"},{id:"analytics",label:"Tilastot",icon:"📊"},{id:"leads",label:"Liidit",icon:"📞"},{id:"test",label:"Testaa",icon:"🧪"},{id:"widget",label:"Asennus",icon:"📋"},{id:"logs",label:"Keskustelut",icon:"💬"},{id:"settings",label:"Asetukset",icon:"⚙️"}];
   return (<div style={{display:"flex",minHeight:"100vh",background:"#0a0a14",fontFamily:"'DM Sans',Arial,sans-serif",color:"#fff"}}><style>{".kc-sidebar{transform:translateX(-100%);transition:transform 0.2s}@media(min-width:768px){.kc-sidebar{transform:translateX(0)!important}.kc-main{margin-left:240px!important}.kc-menu-btn{display:none!important}}"}</style><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     <div style={{width:240,background:"#12121e",borderRight:"1px solid #1e1e30",padding:"20px 16px",display:"flex",flexDirection:"column",position:"fixed",top:0,left:0,bottom:0,zIndex:50,transform:menuOpen?"translateX(0)":"translateX(-100%)",transition:"transform 0.2s"}} className="kc-sidebar">
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:24}}><span style={{fontSize:24}}>🔧</span><div><div style={{color:"#fff",fontWeight:700,fontSize:16}}>Korjaamochat</div><div style={{color:"#666",fontSize:11}}>Hallintapaneeli</div></div></div>
@@ -289,7 +347,7 @@ var isAdmin = sess.user.email === ADMIN_EMAIL;
         {tab==="analytics"&&<Analytics bizId={biz.id} token={sess.access_token}/>}
 {tab==="leads"&&<Leads bizId={biz.id} token={sess.access_token}/>}
 {tab==="test"&&<TestChat bizId={biz.id}/>}
-        {tab==="widget"&&<Wdg bizId={biz.id}/>}        {tab==="logs"&&<Logs bizId={biz.id} token={sess.access_token}/>}
+        {tab==="widget"&&<Wdg bizId={biz.id}/>}        {tab==="logs"&&<Logs bizId={biz.id} token={sess.access_token}/>}{tab==="settings"&&<Settings sess={sess}/>}
       </div>
     </div>
   </div>);
