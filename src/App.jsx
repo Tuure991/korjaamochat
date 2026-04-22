@@ -371,3 +371,4 @@ const S = {
   abox:{padding:16,background:"#0f0f1a",borderRadius:10,border:"1px dashed #2a2a3a"},
   abtn:{padding:"10px 20px",borderRadius:8,border:"1px dashed #3a3a4a",background:"transparent",color:"#e8532e",fontSize:13,fontWeight:600,cursor:"pointer",marginTop:4}
 };
+
