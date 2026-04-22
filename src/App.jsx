@@ -26,7 +26,7 @@ const sb = {
       body: JSON.stringify({ email })
     });
     return r.json();
-  } }
+  }
 };
 
 function Auth({ onLogin }) {
